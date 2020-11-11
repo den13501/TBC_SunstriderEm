@@ -44,7 +44,9 @@ struct SpawnGroupTemplateData
 struct SpawnData
 {
     SpawnObjectType const type;
+
     uint32 spawnId = 0;
+    uint32 id = 0;
     WorldLocation spawnPoint;
     uint32 phaseMask = 0;
     int32 spawntimesecs = 0;

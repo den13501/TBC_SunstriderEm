@@ -1232,11 +1232,11 @@ void ObjectMgr::LoadCreatures()
     _creatureDataStore.clear();
 
     uint32 count = 0;
-    //                                                0                1    2          3
-    QueryResult result = WorldDatabase.PQuery("SELECT creature.spawnID, map, spawnMask, modelid, "
-        //   4           5           6           7            8                9               10            11
+    //                                                   0                1     2        3         4         5
+    QueryResult result = WorldDatabase.PQuery("SELECT creature.spawnID, entry, map, spawnMask, modelid, equipment_id, "
+        //   6           7           8           9            10                11               12            13
         "position_x, position_y, position_z, orientation, spawntimesecs, spawntimesecs_max, spawndist, currentwaypoint, "
-        //   12        13         14          15                 16          17      18         19         20         21
+        //   14        15         16          17                 18          19      20         21         22         23
         "curhealth, curmana, MovementType, unit_flags, creature.ScriptName, event, pool_id, pool_entry, patch_min, patch_max "
         "FROM creature "
         "LEFT OUTER JOIN game_event_creature ON creature.SpawnID = game_event_creature.guid "
@@ -1249,12 +1249,6 @@ void ObjectMgr::LoadCreatures()
         return;
     }
 
-    QueryResult result2 = WorldDatabase.Query("SELECT spawnID, entry, equipment_id FROM creature_entry");
-    if (!result2)
-    {
-        TC_LOG_ERROR("server.loading", ">> Loaded 0 creature entries. DB table `creature_entry` is empty.");
-        return;
-    }
 
     // build single time for check creature data
     std::map<uint32, uint32> spawnMasks;
@@ -1264,69 +1258,48 @@ void ObjectMgr::LoadCreatures()
                 if (GetMapDifficultyData(i, Difficulty(k)))
                     spawnMasks[i] |= (1 << k);
 
-    std::unordered_map<uint32 /*spawnId*/, CreatureData::SpawnDataIds> spawnEntries;
-
-    do
-    {
-        Field* fields = result2->Fetch();
-        uint32 spawnId = fields[0].GetUInt32();
-        uint32 templateId = fields[1].GetUInt32();
-        int8 equipmentId = fields[2].GetInt8();
-
-        CreatureTemplate const* cInfo = GetCreatureTemplate(templateId);
-        if (!cInfo)
-        {
-            TC_LOG_ERROR("sql.sql", "Table `creature_entry` has creature (SpawnId: %u) with not existing creature entry %u, skipped.", spawnId, templateId);
-            continue;
-        }
-
-        // -1 random, 0 no equipment,
-        if (equipmentId != 0 && equipmentId != -1)
-        {
-            if (!GetEquipmentInfo(templateId, equipmentId))
-            {
-                TC_LOG_ERROR("sql.sql", "Table `creature_entry` has creature (SpawnId: %u) with equipment_id %u not found in table `creature_equip_template`, reverting to no equipment.", spawnId, equipmentId);
-                equipmentId = -1;
-            }
-        }
-        CreatureData::SpawnDataIds& data = spawnEntries[spawnId];
-        data.emplace_back(templateId, equipmentId);
-    } while (result2->NextRow());
-
     do
     {
         Field* fields = result->Fetch();
 
         uint32 spawnId = fields[0].GetUInt32();
 
-        // we create a _creatureDataStore entry in creature_entry loading
-        auto spawnEntryItr = spawnEntries.find(spawnId);
-        if (spawnEntryItr == spawnEntries.end())
+        CreatureData& data = _creatureDataStore[spawnId];
+
+        data.id = fields[1].GetUInt32();
+        CreatureTemplate const* cInfo = GetCreatureTemplate(data.id);
+        if (!cInfo)
         {
-            TC_LOG_ERROR("sql.sql", "Table `creature` has creature (SpawnId: %u) with no listed creature id in table creature_entry, skipped.", spawnId);
+            TC_LOG_ERROR("sql.sql", "Table `creature` has creature (SpawnId: %u) with not existing creature entry %u, skipped.", spawnId, data.id);
             continue;
         }
 
-        CreatureData& data = _creatureDataStore[spawnId];
-        data.ids = spawnEntryItr->second;
-        uint32 mapId          = fields[1].GetUInt16();
-        data.spawnMask        = fields[2].GetUInt8();
-        data.displayid        = fields[3].GetUInt32();
-        data.spawnPoint.WorldRelocate(mapId, fields[4].GetFloat(), fields[5].GetFloat(), fields[6].GetFloat(), fields[7].GetFloat());
-        data.spawntimesecs    = fields[ 8].GetUInt32();
-        data.spawntimesecs_max= fields[ 9].GetUInt32();
-        data.spawndist        = fields[10].GetFloat();
-        data.currentwaypoint  = fields[11].GetUInt32();
-        data.curhealth        = fields[12].GetUInt32();
-        data.curmana          = fields[13].GetUInt32();
-        data.movementType     = fields[14].GetUInt8();
-        data.unit_flags       = fields[15].GetUInt32();
-        data.scriptId         = GetScriptId(fields[16].GetString());
-        int32 const gameEvent = fields[17].GetInt32();
-        data.poolId           = fields[18].GetUInt32(); //Old WR pool system
-        uint32 const poolId   = fields[19].GetUInt32();
-        data.patch_min        = fields[20].GetInt8();
-        data.patch_max        = fields[21].GetInt8();
+        uint32 mapId          = fields[2].GetUInt16();
+        data.spawnMask        = fields[3].GetUInt8();
+        data.displayid        = fields[4].GetUInt32();
+        data.equipmentId      = fields[5].GetInt8();
+
+        if (data.equipmentId != 0 && !GetEquipmentInfo(data.id, data.equipmentId))
+        {
+            TC_LOG_ERROR("sql.sql", "Table `creature` has creature (SpawnId: %u) with equipment_id %u not found in table `creature_equip_template`, reverting to no equipment.", spawnId, data.equipmentId);
+            data.equipmentId = 0;
+        }
+
+        data.spawnPoint.WorldRelocate(mapId, fields[6].GetFloat(), fields[7].GetFloat(), fields[8].GetFloat(), fields[9].GetFloat());
+        data.spawntimesecs    = fields[10].GetUInt32();
+        data.spawntimesecs_max= fields[11].GetUInt32();
+        data.spawndist        = fields[12].GetFloat();
+        data.currentwaypoint  = fields[13].GetUInt32();
+        data.curhealth        = fields[14].GetUInt32();
+        data.curmana          = fields[15].GetUInt32();
+        data.movementType     = fields[16].GetUInt8();
+        data.unit_flags       = fields[17].GetUInt32();
+        data.scriptId         = GetScriptId(fields[18].GetString());
+        int32 const gameEvent = fields[19].GetInt32();
+        data.poolId           = fields[20].GetUInt32(); //Old WR pool system
+        uint32 const poolId   = fields[21].GetUInt32();
+        data.patch_min        = fields[22].GetInt8();
+        data.patch_max        = fields[23].GetInt8();
 
         if ((data.patch_min > data.patch_max) || (data.patch_max > WOW_PATCH_MAX))
         {
@@ -1911,7 +1884,7 @@ ObjectGuid::LowType ObjectMgr::AddCreatureData(uint32 entry, uint32 mapId, float
     ObjectGuid::LowType spawnId = GenerateCreatureSpawnId();
 
     CreatureData& data = NewOrExistCreatureData(spawnId);
-    data.ids.emplace_back(entry);
+    data.id = entry;
     data.displayid = 0;
     data.spawnPoint.WorldRelocate(mapId, x, y, z, o);
     data.spawntimesecs = spawntimedelay;

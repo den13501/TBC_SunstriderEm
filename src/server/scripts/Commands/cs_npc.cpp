@@ -286,7 +286,7 @@ public:
             {
                 ObjectGuid::LowType guid = sObjectMgr->GenerateCreatureSpawnId();
                 CreatureData& data = sObjectMgr->NewOrExistCreatureData(guid);
-                data.ids.emplace_back(id);
+                data.id=id;
                 data.spawnPoint.m_positionX = chr->GetTransOffsetX();
                 data.spawnPoint.m_positionY = chr->GetTransOffsetY();
                 data.spawnPoint.m_positionZ = chr->GetTransOffsetZ();
@@ -333,7 +333,7 @@ public:
         uint32 spawnId = creature->GetSpawnId(); //spawn id gets generated in SaveToDB
 
         CreatureData& data = sObjectMgr->NewOrExistCreatureData(spawnId);
-        data.ids.emplace_back(id);
+        data.id=id;
 
         // To call _LoadGoods(); _LoadQuests(); CreateTrainerSpells();
         // current "creature" variable is deleted and created fresh new, otherwise old values might trigger asserts or cause undefined behavior
@@ -1442,10 +1442,9 @@ public:
         uint32 count = 0;
 
         Player* pl = handler->GetSession()->GetPlayer();
-        QueryResult result = WorldDatabase.PQuery("SELECT c.spawnId, ce.entry, position_x, position_y, position_z, map, gec.event, "
+        QueryResult result = WorldDatabase.PQuery("SELECT c.spawnId, c.entry, position_x, position_y, position_z, map, gec.event, "
             "(POW(position_x - '%f', 2) + POW(position_y - '%f', 2) + POW(position_z - '%f', 2)) AS order_ "
-            "FROM creature c " 
-            "JOIN creature_entry ce ON c.spawnID = ce.spawnID "
+            "FROM creature c "
             "LEFT JOIN game_event_creature gec ON c.spawnId = gec.guid "
             "WHERE map='%u' AND (POW(position_x - '%f', 2) + POW(position_y - '%f', 2) + POW(position_z - '%f', 2)) <= '%f' " 
             "ORDER BY order_",

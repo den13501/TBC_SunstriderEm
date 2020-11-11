@@ -766,6 +766,9 @@ uint32 Unit::DealDamage(Unit* attacker, Unit* pVictim, uint32 damage, CleanDamag
         if(!attacker || attacker->IsControlledByPlayer() || attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
             (pVictim->ToCreature())->LowerPlayerDamageReq(health < damage ?  health : damage);
     }
+
+    if ((pVictim->IsCritter()))
+        damage = health;
     
     if (health <= damage)
     {

@@ -252,8 +252,7 @@ Creature::Creature(bool isWorldObject) : Unit(isWorldObject), MapObject(),
     m_respawnradius(0.0f),
     m_reactState(REACT_AGGRESSIVE), 
     m_defaultMovementType(IDLE_MOTION_TYPE), 
-    m_equipmentId(0), 
-    m_originalEquipmentId(0),
+    m_equipmentId(0),
     m_areaCombatTimer(0), 
     m_relocateTimer(60000),
     m_AlreadyCallAssistance(false), 
@@ -288,7 +287,6 @@ Creature::Creature(bool isWorldObject) : Unit(isWorldObject), MapObject(),
     m_lastDamagedTime(0),
     m_originalEntry(0),
     m_questPoolId(0),
-    m_chosenTemplate(0),
     m_spells(),
     disableReputationGain(false)
 {
@@ -545,12 +543,10 @@ bool Creature::InitEntry(uint32 Entry, const CreatureData* data)
         LoadEquipment(-1); //sunstrider: load random equipment
     else if(data) // override
     {
-        uint32 chosenEquipment = data->ChooseEquipmentId(m_chosenTemplate);
-        m_originalEquipmentId = chosenEquipment;
         if(auto overrideEquip = sGameEventMgr->GetEquipmentOverride(m_spawnId))
             LoadEquipment(*overrideEquip);
         else
-            LoadEquipment(chosenEquipment);
+            LoadEquipment(data->equipmentId);
     }
 
     SetName(normalInfo->Name);                              // at normal entry always
@@ -1387,11 +1383,10 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask)
     stmt->setUInt32(0, m_spawnId);
     trans->Append(stmt);
 
-    trans->PAppend("REPLACE INTO creature_entry (`spawnID`,`entry`) VALUES (%u,%u)", m_spawnId, GetEntry());
-
     std::ostringstream ss;
-    ss << "INSERT INTO creature (spawnId,map,spawnMask,modelid,equipment_id,position_x,position_y,position_z,orientation,spawntimesecs,spawndist,currentwaypoint,curhealth,curmana,MovementType, pool_id, patch_min, patch_max) VALUES ("
+    ss << "INSERT INTO creature (spawnId,entry,map,spawnMask,modelid,equipment_id,position_x,position_y,position_z,orientation,spawntimesecs,spawndist,currentwaypoint,curhealth,curmana,MovementType, pool_id, patch_min, patch_max) VALUES ("
         << m_spawnId << ","
+        << GetEntry() << ","
         << mapid << ","
         << (uint32)spawnMask << ",";
         if (displayId)
@@ -1498,7 +1493,7 @@ bool Creature::CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, const 
     SetZoneScript();
     if (GetZoneScript() && data)
     {
-        entry = GetZoneScript()->GetCreatureEntry(guidlow, data, m_chosenTemplate);
+        entry = GetZoneScript()->GetCreatureEntry(guidlow, data);
         if (!entry)
             return false;
     }
@@ -1576,9 +1571,8 @@ bool Creature::LoadFromDB(uint32 spawnId, Map *map, bool addToMap, bool allowDup
     }
     ASSERT(data->IsPatchEnabled());
     
-    m_chosenTemplate = data->ChooseSpawnEntry();
     // Rare creatures in dungeons have 15% chance to spawn
-    CreatureTemplate const *cinfo = sObjectMgr->GetCreatureTemplate(m_chosenTemplate);
+    CreatureTemplate const *cinfo = sObjectMgr->GetCreatureTemplate(data->id);
     if (cinfo && map->GetInstanceId() != 0 && (cinfo->rank == CREATURE_ELITE_RAREELITE || cinfo->rank == CREATURE_ELITE_RARE)) {
         if (rand()%5 != 0)
             return false;
@@ -1598,7 +1592,7 @@ bool Creature::LoadFromDB(uint32 spawnId, Map *map, bool addToMap, bool allowDup
         m_respawnTime = GetMap()->GetGameTime() + urand(4, 7);
     }
 
-    if(!Create(map->GenerateLowGuid<HighGuid::Unit>(), map, PHASEMASK_NORMAL /*data->phaseMask*/, m_chosenTemplate, data->spawnPoint, data, !m_respawnCompatibilityMode))
+    if(!Create(map->GenerateLowGuid<HighGuid::Unit>(), map, PHASEMASK_NORMAL /*data->phaseMask*/, data->id, data->spawnPoint, data, !m_respawnCompatibilityMode))
         return false;
 
     if(!IsPositionValid())
@@ -1849,7 +1843,6 @@ void Creature::DeleteFromDB()
     trans->Append(stmt);
 
     trans->PAppend("DELETE FROM creature_addon WHERE spawnID = '%u'", m_spawnId);
-    trans->PAppend("DELETE FROM creature_entry WHERE spawnID = '%u'", m_spawnId);
     trans->PAppend("DELETE FROM game_event_creature WHERE guid = '%u'", m_spawnId);
     trans->PAppend("DELETE FROM game_event_model_equip WHERE guid = '%u'", m_spawnId);
 
