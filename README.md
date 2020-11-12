@@ -6,6 +6,9 @@ Any PRs are welcome.
 
 Copyright goes to appropriate authors, e.g Sunwell, Mangos, Sunstrider, Trinity and so on..
 
+#Discord!
+https://discord.gg/SBtCBvwP4J
+
 ## Installation
 
 * [Windows](/doc/install_win.md)
