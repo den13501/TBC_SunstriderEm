@@ -271,8 +271,6 @@ class npc_harrison_jones : public CreatureScript
 
             bool GossipSelect(Player* player, uint32 menuId, uint32 gossipListId)
             {
-                TC_LOG_ERROR("script", "test1");
-
                 if (me->GetCreatureTemplate()->GossipMenuId == menuId && !gossipListId)
                 {
                     CloseGossipMenuFor(player);
