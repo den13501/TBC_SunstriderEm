@@ -49,7 +49,7 @@ public:
             summoned->AI()->AttackStart(me);
         }
 
-        void sQuestAccept(Player* player, Quest const* quest)
+        void QuestAccept(Player* player, Quest const* quest)
         {
             if (quest->GetQuestId() == QUEST_FREEDOM_TO_RUUL)
             {
@@ -183,7 +183,7 @@ public:
             summoned->AI()->AttackStart(me);
         }
 
-        void sQuestAccept(Player* player, Quest const* quest)
+        void QuestAccept(Player* player, Quest const* quest)
         {
             if (quest->GetQuestId() == QUEST_VORSHA)
             {

@@ -181,11 +181,12 @@ public:
             Talk(ATTACK_YELL, who);
         }
 
-        void sGossipSelect(Player* player, uint32 /*sender*/, uint32 /*action*/)
+        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
         {
             CloseGossipMenuFor(player);
             me->SetFaction(FACTION_HOSTILE);
             me->Attack(player, true);
+            return false;
         }
 
         void UpdateAI(uint32 diff)
@@ -302,7 +303,7 @@ public:
             Talk(SAY_AGGRO, who);
         }
 
-        void sQuestAccept(Player* player, Quest const* quest)
+        void QuestAccept(Player* player, Quest const* quest)
         {
             if (quest->GetQuestId() == QUEST_A_CRY_FOR_SAY_HELP)
             {

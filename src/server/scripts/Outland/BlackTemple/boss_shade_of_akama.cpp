@@ -412,14 +412,15 @@ class npc_akama_shade : public CreatureScript
                 DoMeleeAttackIfReady();
             }
 
-            void sGossipSelect(Player* player, uint32 /*sender*/, uint32 action)
+            bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
             {
-                if (action == 0)
+                if (gossipListId == 0)
                 { 
                     CloseGossipMenuFor(player);
                     me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                     events2.ScheduleEvent(EVENT_AKAMA_START_ENCOUNTER, 0);
                 }
+                return false;
             }
         };
 
