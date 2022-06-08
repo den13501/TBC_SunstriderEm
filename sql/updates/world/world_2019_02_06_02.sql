@@ -1,6 +1,8 @@
-DROP PROCEDURE IF EXISTS DeleteCreature;
-delimiter ??
-CREATE PROCEDURE DeleteCreature (param1 INT)
+DELIMITER //
+
+CREATE OR REPLACE PROCEDURE DeleteCreature (param1 INT)
+  MODIFIES SQL DATA
+
 BEGIN
 	DELETE FROM creature_entry WHERE spawnID = param1; 
 	DELETE FROM creature_addon WHERE spawnID = param1; 
@@ -14,12 +16,18 @@ BEGIN
 	DELETE FROM creature_formations WHERE memberGUID = param1;
 	DELETE FROM creature_movement_override WHERE SpawnId = param1;
 	DELETE FROM creature WHERE spawnID = param1;
-END??
-delimiter ; 
+END;
 
-DROP PROCEDURE IF EXISTS DeleteGameObject;
-delimiter ??
-CREATE PROCEDURE DeleteGameObject (param1 INT)
+//
+
+DELIMITER ;
+
+
+DELIMITER //
+
+CREATE OR REPLACE PROCEDURE DeleteGameObject (param1 INT)
+  MODIFIES SQL DATA
+
 BEGIN
 	DELETE FROM game_event_creature WHERE guid = param1; 
 	DELETE c1, c2, sg FROM gameobject g
@@ -29,5 +37,8 @@ BEGIN
 	WHERE g.guid = param1;
 	
 	DELETE FROM gameobject WHERE guid = param1;
-END??
-delimiter ;
+END;
+
+//
+
+DELIMITER ;

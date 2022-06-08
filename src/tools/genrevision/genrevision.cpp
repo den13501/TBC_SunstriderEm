@@ -365,7 +365,7 @@ std::string generateHeader(char const* rev_str, char const* date_str, char const
     newData << " #define _REVISION_TIME \"" << time_str << "\""<< std::endl;
     newData << " #define _BRANCH \"" << "Archived" << "\""<< std::endl;
     newData << " #define VER_COMPANYNAME_STR \"" << "-" << "\""<< std::endl;
-    newData << " #define VER_LEGALCOPYRIGHT_STR \"" << "(c)2008-2014 Windrunner" << "\""<< std::endl;
+    newData << " #define VER_LEGALCOPYRIGHT_STR \"" << "(c)2020-2021 wowtbc.online" << "\""<< std::endl;
     if (!strcmp(rev_str,"Archive") || !strcmp(rev_str,"*"))
     {
         newData << " #define VER_FILEVERSION        0,0,0,0"<< std::endl;

@@ -1,7 +1,7 @@
 message("")
-message("* Sunstrider revision:   ${rev_hash} ${rev_date} (${rev_branch} branch)")
+message("* wowtbc.online revision:   ${rev_hash} ${rev_date} (${rev_branch} branch)")
 if( UNIX )
-  message("* Sunstrider buildtype  : ${CMAKE_BUILD_TYPE}")
+  message("* wowtbc.online buildtype  : ${CMAKE_BUILD_TYPE}")
 endif()
 message("")
 
