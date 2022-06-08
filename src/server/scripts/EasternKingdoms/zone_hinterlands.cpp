@@ -45,7 +45,7 @@ public:
             summoned->GetMotionMaster()->MovePoint(0, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ());
         }
 
-        void sQuestAccept(Player* player, Quest const* quest)
+        void QuestAccept(Player* player, Quest const* quest)
         {
             if (quest->GetQuestId() == QUEST_RESQUE_OOX_09)
             {
@@ -206,7 +206,7 @@ public:
             summoned->GetMotionMaster()->MovePoint(0, AmbushMoveTo[spawnId].posX, AmbushMoveTo[spawnId].posY, AmbushMoveTo[spawnId].posZ);
         }
 
-        void sQuestAccept(Player* player, Quest const* quest)
+        void QuestAccept(Player* player, Quest const* quest)
         {
             if (quest->GetQuestId() == QUEST_RINJI_TRAPPED)
             {

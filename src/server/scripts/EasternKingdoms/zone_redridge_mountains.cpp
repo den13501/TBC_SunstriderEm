@@ -33,7 +33,7 @@ public:
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
         }
 
-        void sQuestAccept(Player* player, Quest const* quest)
+        void QuestAccept(Player* player, Quest const* quest)
         {
             if (quest->GetQuestId() == QUEST_MISSING_IN_ACTION)
             {

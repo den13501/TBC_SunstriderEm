@@ -186,7 +186,8 @@ friend class InstanceMap;
         void DoSendNotifyToInstance(char const* format, ...);
 
         // Remove Auras due to Spell on all players in instance
-        void DoRemoveAurasDueToSpellOnPlayers(uint32 spellId);
+        void DoRemoveAurasDueToSpellOnPlayers(uint32 spell, bool includePets = false, bool includeControlled = false);
+        void DoRemoveAurasDueToSpellOnPlayer(Player* player, uint32 spell, bool includePets = false, bool includeControlled = false);
 
         // Cast spell on all players in instance
         void DoCastSpellOnPlayers(uint32 spell);
@@ -217,16 +218,22 @@ friend class InstanceMap;
         virtual void FillInitialWorldStates(WorldPacket& /*data*/) { }
 
         uint32 GetEncounterCount() const { return bosses.size(); }
-
-        static bool InstanceHasScript(WorldObject const* obj, char const* scriptName);
+		static bool InstanceHasScript(WorldObject const* obj, char const* scriptName);
+        // Only used by areatriggers that inherit from OnlyOnceAreaTriggerScript
+        void MarkAreaTriggerDone(uint32 id) { _activatedAreaTriggers.insert(id); }
+        void ResetAreaTriggerDone(uint32 id) { _activatedAreaTriggers.erase(id); }
+        bool IsAreaTriggerDone(uint32 id) const { return _activatedAreaTriggers.find(id) != _activatedAreaTriggers.end(); }
 
     protected:
         void SetHeaders(std::string const& dataHeaders);
         void SetBossNumber(uint32 number) { bosses.resize(number); }
         void LoadBossBoundaries(BossBoundaryData const& data);
+        void LoadDoorData(std::vector<DoorData> const data);
         void LoadDoorData(DoorData const* data);
+        void LoadMinionData(std::vector<MinionData> const data);
         void LoadMinionData(MinionData const* data);
         void LoadObjectData(std::vector<ObjectData> const creatureData, std::vector<ObjectData> const gameObjectData);
+        void LoadObjectData(ObjectData const* creatureData, ObjectData const* gameObjectData);
 
         void AddObject(Creature* obj, bool add);
         void AddObject(GameObject* obj, bool add);
@@ -263,6 +270,7 @@ friend class InstanceMap;
         bool _SkipCheckRequiredBosses(Player const* player = nullptr) const;
     private:
         static void LoadObjectData(std::vector<ObjectData> const creatureData, ObjectInfoMap& objectInfo);
+        static void LoadObjectData(ObjectData const* creatureData, ObjectInfoMap& objectInfo);
 
         std::vector<char> headers;
         std::vector<BossInfo> bosses;
@@ -275,7 +283,7 @@ friend class InstanceMap;
         uint32 completedEncounters; // completed encounter mask, bit indexes are DungeonEncounter.dbc boss numbers, used for packets
 #endif
         std::vector<InstanceSpawnGroupInfo> const* const _instanceSpawnGroups;
-        //NYI std::unordered_set<uint32> _activatedAreaTriggers;
+        std::unordered_set<uint32> _activatedAreaTriggers;
 
 #ifdef TRINITY_API_USE_DYNAMIC_LINKING
         // Strong reference to the associated script module

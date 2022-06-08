@@ -1,4 +1,4 @@
-#include "ScriptPCH.h"
+#include "ScriptMgr.h"
 #include "EscortAI.h"
 
 class mob_shattered_rumbler : public CreatureScript
@@ -803,7 +803,7 @@ public:
                         if(!fleeing)
                         {
                             me->GetThreatManager().ResetAllThreat();
-                            me->GetMotionMaster()->MoveFleeing(player);
+                            me->GetMotionMaster()->MoveFleeing(player, 0, true);
                             fleeing = true;
                         }
                     }

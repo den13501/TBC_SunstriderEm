@@ -223,7 +223,7 @@ void GameEventMgr::LoadVendors()
             newEntry.entry = 0;
 
             if (CreatureData const* data = sObjectMgr->GetCreatureData(guid))
-                newEntry.entry = data->GetFirstSpawnEntry();
+                newEntry.entry = data->id;
 
             // check validity with event's npcflag
             if (!sObjectMgr->IsVendorItemValid(newEntry.entry, newEntry.proto, newEntry.maxcount, newEntry.incrtime, newEntry.ExtendedCost, nullptr, nullptr, event_npc_flag))
@@ -485,9 +485,8 @@ void GameEventMgr::LoadFromDB()
 
     mGameEventModelEquip.resize(mGameEvent.size());
     //                                   0          1           2             3                  4
-    result = WorldDatabase.Query("SELECT c.spawnID, geme.event, geme.modelid, geme.equipment_id, ce.entry "
+    result = WorldDatabase.Query("SELECT c.spawnID, geme.event, geme.modelid, geme.equipment_id, c.entry "
         "FROM creature c "
-        "JOIN creature_entry ce ON ce.spawnID = c.spawnID "
         "JOIN game_event_model_equip geme ON c.spawnID = geme.guid");
 
     count = 0;

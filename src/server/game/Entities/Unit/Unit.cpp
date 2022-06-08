@@ -235,8 +235,6 @@ DispelableAura::DispelableAura(Aura* aura, int32 dispelChance, uint8 dispelCharg
 {
 }
 
-DispelableAura::~DispelableAura() = default;
-
 bool DispelableAura::RollDispel() const
 {
     return roll_chance_i(_chance);
@@ -596,6 +594,10 @@ void Unit::RemoveSpellbyDamageTaken(uint32 damage, uint32 spellId)
 
 uint32 Unit::DealDamage(Unit* attacker, Unit* pVictim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellInfo const* spellProto, bool durabilityLoss)
 {
+    // remove stealth affects from attacker at any non-DoT damage (including 0 damage)
+    if (damagetype != DOT)
+        attacker->RemoveAurasByType(SPELL_AURA_MOD_STEALTH);
+
     if (attacker && pVictim->IsImmunedToDamage(spellProto))
     {
         attacker->SendSpellDamageImmune(pVictim, spellProto->Id);
@@ -764,6 +766,9 @@ uint32 Unit::DealDamage(Unit* attacker, Unit* pVictim, uint32 damage, CleanDamag
         if(!attacker || attacker->IsControlledByPlayer() || attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
             (pVictim->ToCreature())->LowerPlayerDamageReq(health < damage ?  health : damage);
     }
+
+    if ((pVictim->IsCritter()))
+        damage = health;
     
     if (health <= damage)
     {
@@ -7704,9 +7709,10 @@ void Unit::UpdateSpeed(UnitMoveType mtype)
             return;
     }
 
-    float bonus = non_stack_bonus > stack_bonus ? non_stack_bonus : stack_bonus;
     // now we ready for speed calculation
-    float speed  = main_speed_mod ? bonus*(100.0f + main_speed_mod)/100.0f : bonus;
+    float speed = std::max(non_stack_bonus, stack_bonus);
+    if (main_speed_mod)
+        AddPct(speed, main_speed_mod);
 
     switch(mtype)
     {
@@ -7714,6 +7720,10 @@ void Unit::UpdateSpeed(UnitMoveType mtype)
         case MOVE_SWIM:
         case MOVE_FLIGHT:
         {
+            // Set creature speed rate
+            if (GetTypeId() == TYPEID_UNIT)
+                speed *= ToCreature()->GetCreatureTemplate()->speed_run;    // at this point, MOVE_WALK is never reached
+
             // Normalize speed by 191 aura SPELL_AURA_USE_NORMAL_MOVEMENT_SPEED if need
             // TODO: possible affect only on MOVE_RUN
             if(int32 normalization = GetMaxPositiveAuraModifier(SPELL_AURA_USE_NORMAL_MOVEMENT_SPEED))
@@ -9436,7 +9446,8 @@ void Unit::StopMoving()
         return;
 
     // Update position now since Stop does not start a new movement that can be updated later
-    UpdateSplinePosition();
+    if (movespline->HasStarted())
+        UpdateSplinePosition();
     Movement::MoveSplineInit init(this);
     init.Stop();
 }
@@ -10404,7 +10415,7 @@ void Unit::SetFeared(bool apply)
         if (!caster)
             caster = GetAttackerForHelper();
 
-       GetMotionMaster()->MoveFleeing(caster, fearAuras.empty() ? sWorld->getConfig(CONFIG_CREATURE_FAMILY_FLEE_DELAY) : 0);             // caster == NULL processed in MoveFleeing
+        GetMotionMaster()->MoveFleeing(caster, fearAuras.empty() ? sWorld->getConfig(CONFIG_CREATURE_FAMILY_FLEE_DELAY) : 0, fearAuras.empty());             // caster == NULL processed in MoveFleeing
     }
     else
     {

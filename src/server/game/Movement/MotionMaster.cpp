@@ -604,7 +604,7 @@ void MotionMaster::MoveConfused()
     }
 }
 
-void MotionMaster::MoveFleeing(Unit* enemy, uint32 time)
+void MotionMaster::MoveFleeing(Unit* enemy, uint32 time, bool reducedSpeed)
 {
     if (!enemy)
         return;
@@ -613,12 +613,12 @@ void MotionMaster::MoveFleeing(Unit* enemy, uint32 time)
     if (_owner->GetTypeId() == TYPEID_UNIT)
     {
         if (time)
-            Add(new TimedFleeingMovementGenerator(enemy->GetGUID(), time));
+            Add(new TimedFleeingMovementGenerator(enemy->GetGUID(), time, reducedSpeed));
         else
-            Add(new FleeingMovementGenerator<Creature>(enemy->GetGUID()));
+            Add(new FleeingMovementGenerator<Creature>(enemy->GetGUID(), reducedSpeed));
     }
     else
-        Add(new FleeingMovementGenerator<Player>(enemy->GetGUID()));
+        Add(new FleeingMovementGenerator<Player>(enemy->GetGUID(), reducedSpeed));
 }
 
 void MotionMaster::MovePoint(uint32 id, Position const& pos, bool generatePath/* = true*/, Optional<float> finalOrient/* = {}*/, bool forceDestination /*= true*/)
@@ -729,6 +729,10 @@ void MotionMaster::MoveFall(uint32 id /*=0*/)
     if (fabs(_owner->GetPositionZ() - tz) < 0.1f)
         return;
 
+    // rooted units don't move (also setting falling+root flag causes client freezes)
+    if (_owner->HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED))
+        return;
+
     _owner->AddUnitMovementFlag(MOVEMENTFLAG_JUMPING_OR_FALLING);
     _owner->SetFallTime(0);
 
@@ -795,7 +799,7 @@ void MotionMaster::MoveSeekAssistance(float x, float y, float z)
         _owner->AttackStop();
         _owner->CastStop();
         _owner->ToCreature()->SetReactState(REACT_PASSIVE);
-        Add(new AssistanceMovementGenerator(EVENT_ASSIST_MOVE, x, y, z));
+        Add(new AssistanceMovementGenerator(EVENT_ASSIST_MOVE, x, y, z, _owner->GetSpeed(MOVE_RUN) * 0.66f));
     } 
     else
     {

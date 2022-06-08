@@ -269,17 +269,18 @@ class npc_harrison_jones : public CreatureScript
 
             void EnterCombat(Unit* /*who*/) { }
 
-            void sGossipSelect(Player* player, uint32 sender, uint32 action)
+            bool GossipSelect(Player* player, uint32 menuId, uint32 gossipListId)
             {
-               if (me->GetCreatureTemplate()->GossipMenuId == sender && !action)
-               {
+                if (me->GetCreatureTemplate()->GossipMenuId == menuId && !gossipListId)
+                {
                     CloseGossipMenuFor(player);
                     me->SetFacingToObject(player);
                     me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                     Talk(SAY_HARRISON_0);
                     _gongEvent = GONG_EVENT_1;
                     _gongTimer = 4000;
-               }
+                }
+                return false;
             }
 
             void SpellHit(Unit*, const SpellInfo* spell)

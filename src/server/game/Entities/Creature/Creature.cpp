@@ -252,8 +252,7 @@ Creature::Creature(bool isWorldObject) : Unit(isWorldObject), MapObject(),
     m_respawnradius(0.0f),
     m_reactState(REACT_AGGRESSIVE), 
     m_defaultMovementType(IDLE_MOTION_TYPE), 
-    m_equipmentId(0), 
-    m_originalEquipmentId(0),
+    m_equipmentId(0),
     m_areaCombatTimer(0), 
     m_relocateTimer(60000),
     m_AlreadyCallAssistance(false), 
@@ -288,7 +287,6 @@ Creature::Creature(bool isWorldObject) : Unit(isWorldObject), MapObject(),
     m_lastDamagedTime(0),
     m_originalEntry(0),
     m_questPoolId(0),
-    m_chosenTemplate(0),
     m_spells(),
     disableReputationGain(false)
 {
@@ -545,12 +543,10 @@ bool Creature::InitEntry(uint32 Entry, const CreatureData* data)
         LoadEquipment(-1); //sunstrider: load random equipment
     else if(data) // override
     {
-        uint32 chosenEquipment = data->ChooseEquipmentId(m_chosenTemplate);
-        m_originalEquipmentId = chosenEquipment;
         if(auto overrideEquip = sGameEventMgr->GetEquipmentOverride(m_spawnId))
             LoadEquipment(*overrideEquip);
         else
-            LoadEquipment(chosenEquipment);
+            LoadEquipment(data->equipmentId);
     }
 
     SetName(normalInfo->Name);                              // at normal entry always
@@ -1387,11 +1383,10 @@ void Creature::SaveToDB(uint32 mapid, uint8 spawnMask)
     stmt->setUInt32(0, m_spawnId);
     trans->Append(stmt);
 
-    trans->PAppend("REPLACE INTO creature_entry (`spawnID`,`entry`) VALUES (%u,%u)", m_spawnId, GetEntry());
-
     std::ostringstream ss;
-    ss << "INSERT INTO creature (spawnId,map,spawnMask,modelid,equipment_id,position_x,position_y,position_z,orientation,spawntimesecs,spawndist,currentwaypoint,curhealth,curmana,MovementType, pool_id, patch_min, patch_max) VALUES ("
+    ss << "INSERT INTO creature (spawnId,entry,map,spawnMask,modelid,equipment_id,position_x,position_y,position_z,orientation,spawntimesecs,spawndist,currentwaypoint,curhealth,curmana,MovementType, pool_id, patch_min, patch_max) VALUES ("
         << m_spawnId << ","
+        << GetEntry() << ","
         << mapid << ","
         << (uint32)spawnMask << ",";
         if (displayId)
@@ -1423,10 +1418,15 @@ void Creature::UpdateLevelDependantStats()
 {
     CreatureTemplate const* cInfo = GetCreatureTemplate();
     // uint32 rank = IsPet() ? 0 : cInfo->rank;
+	uint32 rank = IsPet() ? 0 : cInfo->rank;
+	uint8 level = GetLevel();
     CreatureBaseStats const* stats = sObjectMgr->GetCreatureBaseStats(GetLevel(), cInfo->unit_class);
 
     // health
-    uint32 health = stats->GenerateHealth(cInfo);
+ //   uint32 health = stats->GenerateHealth(cInfo);
+	float healthmod = _GetHealthMod(rank);
+	uint32 basehp = stats->GenerateHealth(cInfo);
+	uint32 health = uint32(basehp * healthmod);
 
     SetCreateHealth(health);
     SetMaxHealth(health);
@@ -1493,7 +1493,7 @@ bool Creature::CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, const 
     SetZoneScript();
     if (GetZoneScript() && data)
     {
-        entry = GetZoneScript()->GetCreatureEntry(guidlow, data, m_chosenTemplate);
+        entry = GetZoneScript()->GetCreatureEntry(guidlow, data);
         if (!entry)
             return false;
     }
@@ -1571,9 +1571,8 @@ bool Creature::LoadFromDB(uint32 spawnId, Map *map, bool addToMap, bool allowDup
     }
     ASSERT(data->IsPatchEnabled());
     
-    m_chosenTemplate = data->ChooseSpawnEntry();
     // Rare creatures in dungeons have 15% chance to spawn
-    CreatureTemplate const *cinfo = sObjectMgr->GetCreatureTemplate(m_chosenTemplate);
+    CreatureTemplate const *cinfo = sObjectMgr->GetCreatureTemplate(data->id);
     if (cinfo && map->GetInstanceId() != 0 && (cinfo->rank == CREATURE_ELITE_RAREELITE || cinfo->rank == CREATURE_ELITE_RARE)) {
         if (rand()%5 != 0)
             return false;
@@ -1593,7 +1592,7 @@ bool Creature::LoadFromDB(uint32 spawnId, Map *map, bool addToMap, bool allowDup
         m_respawnTime = GetMap()->GetGameTime() + urand(4, 7);
     }
 
-    if(!Create(map->GenerateLowGuid<HighGuid::Unit>(), map, PHASEMASK_NORMAL /*data->phaseMask*/, m_chosenTemplate, data->spawnPoint, data, !m_respawnCompatibilityMode))
+    if(!Create(map->GenerateLowGuid<HighGuid::Unit>(), map, PHASEMASK_NORMAL /*data->phaseMask*/, data->id, data->spawnPoint, data, !m_respawnCompatibilityMode))
         return false;
 
     if(!IsPositionValid())
@@ -1675,19 +1674,76 @@ void Creature::LoadEquipment(int8 id, bool force)
     }
 }
 
+float Creature::_GetHealthMod(int32 rank)
+{
+	switch (rank)                                           // define rates for each elite rank
+	{
+	case CREATURE_ELITE_NORMAL:
+		return sWorld->GetRate(RATE_CREATURE_NORMAL_HP);
+	case CREATURE_ELITE_ELITE:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_ELITE_HP);
+	case CREATURE_ELITE_RAREELITE:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_RAREELITE_HP);
+	case CREATURE_ELITE_WORLDBOSS:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_WORLDBOSS_HP);
+	case CREATURE_ELITE_RARE:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_RARE_HP);
+	default:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_ELITE_HP);
+	}
+}
+
+float Creature::_GetDamageMod(int32 rank)
+{
+	switch (rank)                                           // define rates for each elite rank
+	{
+	case CREATURE_ELITE_NORMAL:
+		return sWorld->GetRate(RATE_CREATURE_NORMAL_DAMAGE);
+	case CREATURE_ELITE_ELITE:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_ELITE_DAMAGE);
+	case CREATURE_ELITE_RAREELITE:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_RAREELITE_DAMAGE);
+	case CREATURE_ELITE_WORLDBOSS:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_WORLDBOSS_DAMAGE);
+	case CREATURE_ELITE_RARE:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_RARE_DAMAGE);
+	default:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_ELITE_DAMAGE);
+	}
+}
+
+float Creature::_GetSpellDamageMod(int32 rank)
+{
+	switch (rank)                                           // define rates for each elite rank
+	{
+	case CREATURE_ELITE_NORMAL:
+		return sWorld->GetRate(RATE_CREATURE_NORMAL_SPELLDAMAGE);
+	case CREATURE_ELITE_ELITE:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_ELITE_SPELLDAMAGE);
+	case CREATURE_ELITE_RAREELITE:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_RAREELITE_SPELLDAMAGE);
+	case CREATURE_ELITE_WORLDBOSS:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_WORLDBOSS_SPELLDAMAGE);
+	case CREATURE_ELITE_RARE:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_RARE_SPELLDAMAGE);
+	default:
+		return sWorld->GetRate(RATE_CREATURE_ELITE_ELITE_SPELLDAMAGE);
+	}
+}
+
 void Creature::SetSpawnHealth()
 {
     uint32 curhealth;
     if (m_creatureData && !m_regenHealth)
     {
         curhealth = m_creatureData->curhealth;
-        /*
+
         if (curhealth)
         {
             curhealth = uint32(curhealth * _GetHealthMod(GetCreatureTemplate()->rank));
             if (curhealth < 1)
                 curhealth = 1;
-        }*/
+        }
         SetPower(POWER_MANA, m_creatureData->curmana);
     }
     else
@@ -1697,6 +1753,21 @@ void Creature::SetSpawnHealth()
     }
 
     SetHealth((m_deathState == ALIVE || m_deathState == JUST_RESPAWNED) ? curhealth : 0);
+}
+
+uint32 Creature::_GetCreatureElite(int32 rank)
+{
+	switch (rank)
+	{
+	case CREATURE_ELITE_NORMAL:return sWorld->getConfig(CONFIG_UINT32_CREATURE_ELITE_NORMAL);
+	case CREATURE_ELITE_ELITE:return sWorld->getConfig(CREATURE_ELITE_ELITE_ELITE);
+	case CREATURE_ELITE_RAREELITE:return sWorld->getConfig(CREATURE_ELITE_RAREELITE_RAREELITE);
+	case CREATURE_ELITE_WORLDBOSS:return sWorld->getConfig(CREATURE_ELITE_WORLDBOSS_WORLDBOSS);
+	case CREATURE_ELITE_RARE:return sWorld->getConfig(CREATURE_ELITE_RARE_RARE);
+	default:
+		break;
+	}
+	return 10;
 }
 
 void Creature::SetWeapon(WeaponSlot slot, uint32 displayid, ItemSubclassWeapon subclass, InventoryType inventoryType)
@@ -1772,7 +1843,6 @@ void Creature::DeleteFromDB()
     trans->Append(stmt);
 
     trans->PAppend("DELETE FROM creature_addon WHERE spawnID = '%u'", m_spawnId);
-    trans->PAppend("DELETE FROM creature_entry WHERE spawnID = '%u'", m_spawnId);
     trans->PAppend("DELETE FROM game_event_creature WHERE guid = '%u'", m_spawnId);
     trans->PAppend("DELETE FROM game_event_model_equip WHERE guid = '%u'", m_spawnId);
 
@@ -3524,6 +3594,8 @@ void Creature::AtEnterCombat()
 
     if (!(GetCreatureTemplate()->type_flags & CREATURE_TYPE_FLAG_MOUNTED_COMBAT_ALLOWED))
         Dismount();
+
+    SetStandState(UNIT_STAND_STATE_STAND);
 
     if (IsPet() || IsGuardian()) // update pets' speed for catchup OOC speed
     {

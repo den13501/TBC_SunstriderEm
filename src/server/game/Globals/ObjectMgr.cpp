@@ -47,20 +47,18 @@ ScriptMapMap sWaypointScripts;
 
 bool normalizePlayerName(std::string& name)
 {
-    if(name.empty())
+    if (name.empty())
         return false;
 
-    wchar_t wstr_buf[MAX_INTERNAL_PLAYER_NAME+1];
-    size_t wstr_len = MAX_INTERNAL_PLAYER_NAME;
-
-    if(!Utf8toWStr(name,&wstr_buf[0],wstr_len))
+    std::wstring tmp;
+    if (!Utf8toWStr(name, tmp))
         return false;
 
-    wstr_buf[0] = wcharToUpper(wstr_buf[0]);
-    for(size_t i = 1; i < wstr_len; ++i)
-        wstr_buf[i] = wcharToLower(wstr_buf[i]);
+    wstrToLower(tmp);
+    if (!tmp.empty())
+        tmp[0] = wcharToUpper(tmp[0]);
 
-    if(!WStrToUtf8(wstr_buf,wstr_len,name))
+    if (!WStrToUtf8(tmp, name))
         return false;
 
     return true;
@@ -279,21 +277,21 @@ void ObjectMgr::LoadCreatureTemplates(bool reload /* = false */)
 
     uint32 const expansion = sWorld->GetWowPatch() > WOW_PATCH_240 ? 2 : 1;
     //                                                 
-    QueryResult result = WorldDatabase.PQuery("SELECT entry, difficulty_entry_1, modelid1, modelid2, modelid3, "
+    QueryResult result = WorldDatabase.PQuery("SELECT entry, ANY_VALUE(difficulty_entry_1), ANY_VALUE(modelid1), ANY_VALUE(modelid2), ANY_VALUE(modelid3), "
                                              //   5
-                                             "modelid4, name, subname, IconName, gossip_menu_id, ct.minlevel, ct.maxlevel, exp, faction, npcflag, speed_walk, speed_run, "
+                                             "ANY_VALUE(modelid4), ANY_VALUE(name), ANY_VALUE(subname), ANY_VALUE(IconName), ANY_VALUE(gossip_menu_id), ANY_VALUE(ct.minlevel), ANY_VALUE(ct.maxlevel), ANY_VALUE(exp), ANY_VALUE(faction), ANY_VALUE(npcflag), ANY_VALUE(speed_walk), ANY_VALUE(speed_run), "
                                              //
-                                             "scale, `rank`, dmgschool, BaseAttackTime, RangeAttackTime, BaseVariance, RangeVariance, unit_class, unit_flags, unit_flags2, dynamicflags, family,"
+                                             "ANY_VALUE(scale), ANY_VALUE(`rank`), ANY_VALUE(dmgschool), ANY_VALUE(BaseAttackTime), ANY_VALUE(RangeAttackTime), ANY_VALUE(BaseVariance), ANY_VALUE(RangeVariance), ANY_VALUE(unit_class), ANY_VALUE(unit_flags), ANY_VALUE(unit_flags2), ANY_VALUE(dynamicflags), ANY_VALUE(family),"
                                              //   
-                                             "type,"
+                                             "ANY_VALUE(type),"
                                              //  
-                                             "type_flags, lootid, pickpocketloot, skinloot, resistance1, resistance2, resistance3, resistance4, resistance5, resistance6, spell1, "
+                                             "ANY_VALUE(type_flags), ANY_VALUE(lootid), ANY_VALUE(pickpocketloot), ANY_VALUE(skinloot), ANY_VALUE(resistance1), ANY_VALUE(resistance2), ANY_VALUE(resistance3), ANY_VALUE(resistance4), ANY_VALUE(resistance5), ANY_VALUE(resistance6), ANY_VALUE(spell1), "
                                              //
-                                             "spell2, spell3, spell4, spell5, spell6, spell7, spell8, PetSpellDataId, mingold, maxgold, AIName, MovementType, "
+                                             "ANY_VALUE(spell2), ANY_VALUE(spell3), ANY_VALUE(spell4), ANY_VALUE(spell5), ANY_VALUE(spell6), ANY_VALUE(spell7), ANY_VALUE(spell8), ANY_VALUE(PetSpellDataId), ANY_VALUE(mingold), ANY_VALUE(maxgold), ANY_VALUE(AIName), ANY_VALUE(MovementType), "
                                              //           
-                                             "HealthModifier, ManaModifier, ArmorModifier, DamageModifier, ExperienceModifier, RacialLeader, RegenHealth, "
+                                             "ANY_VALUE(HealthModifier), ANY_VALUE(ManaModifier), ANY_VALUE(ArmorModifier), ANY_VALUE(DamageModifier), ANY_VALUE(ExperienceModifier), ANY_VALUE(RacialLeader), ANY_VALUE(RegenHealth), "
                                              //   
-                                             "mechanic_immune_mask, spell_school_immune_mask, flags_extra, ScriptName, ctm.Ground, ctm.Swim, ctm.Flight, ctm.Rooted, df.Flags1, df.Flags2, df.Flags3, df.Flags4, df.Flags5, patch "
+                                             "ANY_VALUE(mechanic_immune_mask), ANY_VALUE(spell_school_immune_mask), ANY_VALUE(flags_extra), ANY_VALUE(ScriptName), ANY_VALUE(ctm.Ground), ANY_VALUE(ctm.Swim), ANY_VALUE(ctm.Flight), ANY_VALUE(ctm.Rooted), ANY_VALUE(df.Flags1), ANY_VALUE(df.Flags2), ANY_VALUE(df.Flags3), ANY_VALUE(df.Flags4), ANY_VALUE(df.Flags5), ANY_VALUE(patch) "
                                              //   
                                              "FROM creature_template ct "
                                              "LEFT JOIN creature_template_movement ctm ON ct.entry = ctm.CreatureId "
@@ -1082,7 +1080,7 @@ void ObjectMgr::LoadCreatureModelInfo()
 
     uint32 oldMSTime = GetMSTime();
 
-    QueryResult result = WorldDatabase.PQuery("SELECT modelid, bounding_radius, combat_reach, gender, modelid_other_gender, MAX(patch) FROM creature_model_info WHERE patch <= %u GROUP BY modelid",  sWorld->GetWowPatch());
+    QueryResult result = WorldDatabase.PQuery("SELECT modelid, ANY_VALUE(bounding_radius), ANY_VALUE(combat_reach), ANY_VALUE(gender), ANY_VALUE(modelid_other_gender), MAX(patch) FROM creature_model_info WHERE patch <= %u GROUP BY modelid",  sWorld->GetWowPatch());
 
     if (!result)
     {
@@ -1234,11 +1232,11 @@ void ObjectMgr::LoadCreatures()
     _creatureDataStore.clear();
 
     uint32 count = 0;
-    //                                                0                1    2          3
-    QueryResult result = WorldDatabase.PQuery("SELECT creature.spawnID, map, spawnMask, modelid, "
-        //   4           5           6           7            8                9               10            11
+    //                                                   0                1     2        3         4         5
+    QueryResult result = WorldDatabase.PQuery("SELECT creature.spawnID, entry, map, spawnMask, modelid, equipment_id, "
+        //   6           7           8           9            10                11               12            13
         "position_x, position_y, position_z, orientation, spawntimesecs, spawntimesecs_max, spawndist, currentwaypoint, "
-        //   12        13         14          15                 16          17      18         19         20         21
+        //   14        15         16          17                 18          19      20         21         22         23
         "curhealth, curmana, MovementType, unit_flags, creature.ScriptName, event, pool_id, pool_entry, patch_min, patch_max "
         "FROM creature "
         "LEFT OUTER JOIN game_event_creature ON creature.SpawnID = game_event_creature.guid "
@@ -1251,12 +1249,6 @@ void ObjectMgr::LoadCreatures()
         return;
     }
 
-    QueryResult result2 = WorldDatabase.Query("SELECT spawnID, entry, equipment_id FROM creature_entry");
-    if (!result2)
-    {
-        TC_LOG_ERROR("server.loading", ">> Loaded 0 creature entries. DB table `creature_entry` is empty.");
-        return;
-    }
 
     // build single time for check creature data
     std::map<uint32, uint32> spawnMasks;
@@ -1266,69 +1258,48 @@ void ObjectMgr::LoadCreatures()
                 if (GetMapDifficultyData(i, Difficulty(k)))
                     spawnMasks[i] |= (1 << k);
 
-    std::unordered_map<uint32 /*spawnId*/, CreatureData::SpawnDataIds> spawnEntries;
-
-    do
-    {
-        Field* fields = result2->Fetch();
-        uint32 spawnId = fields[0].GetUInt32();
-        uint32 templateId = fields[1].GetUInt32();
-        int8 equipmentId = fields[2].GetInt8();
-
-        CreatureTemplate const* cInfo = GetCreatureTemplate(templateId);
-        if (!cInfo)
-        {
-            TC_LOG_ERROR("sql.sql", "Table `creature_entry` has creature (SpawnId: %u) with not existing creature entry %u, skipped.", spawnId, templateId);
-            continue;
-        }
-
-        // -1 random, 0 no equipment,
-        if (equipmentId != 0 && equipmentId != -1)
-        {
-            if (!GetEquipmentInfo(templateId, equipmentId))
-            {
-                TC_LOG_ERROR("sql.sql", "Table `creature_entry` has creature (SpawnId: %u) with equipment_id %u not found in table `creature_equip_template`, reverting to no equipment.", spawnId, equipmentId);
-                equipmentId = -1;
-            }
-        }
-        CreatureData::SpawnDataIds& data = spawnEntries[spawnId];
-        data.emplace_back(templateId, equipmentId);
-    } while (result2->NextRow());
-
     do
     {
         Field* fields = result->Fetch();
 
         uint32 spawnId = fields[0].GetUInt32();
 
-        // we create a _creatureDataStore entry in creature_entry loading
-        auto spawnEntryItr = spawnEntries.find(spawnId);
-        if (spawnEntryItr == spawnEntries.end())
+        CreatureData& data = _creatureDataStore[spawnId];
+
+        data.id = fields[1].GetUInt32();
+        CreatureTemplate const* cInfo = GetCreatureTemplate(data.id);
+        if (!cInfo)
         {
-            TC_LOG_ERROR("sql.sql", "Table `creature` has creature (SpawnId: %u) with no listed creature id in table creature_entry, skipped.", spawnId);
+            TC_LOG_ERROR("sql.sql", "Table `creature` has creature (SpawnId: %u) with not existing creature entry %u, skipped.", spawnId, data.id);
             continue;
         }
 
-        CreatureData& data = _creatureDataStore[spawnId];
-        data.ids = spawnEntryItr->second;
-        uint32 mapId          = fields[1].GetUInt16();
-        data.spawnMask        = fields[2].GetUInt8();
-        data.displayid        = fields[3].GetUInt32();
-        data.spawnPoint.WorldRelocate(mapId, fields[4].GetFloat(), fields[5].GetFloat(), fields[6].GetFloat(), fields[7].GetFloat());
-        data.spawntimesecs    = fields[ 8].GetUInt32();
-        data.spawntimesecs_max= fields[ 9].GetUInt32();
-        data.spawndist        = fields[10].GetFloat();
-        data.currentwaypoint  = fields[11].GetUInt32();
-        data.curhealth        = fields[12].GetUInt32();
-        data.curmana          = fields[13].GetUInt32();
-        data.movementType     = fields[14].GetUInt8();
-        data.unit_flags       = fields[15].GetUInt32();
-        data.scriptId         = GetScriptId(fields[16].GetString());
-        int32 const gameEvent = fields[17].GetInt32();
-        data.poolId           = fields[18].GetUInt32(); //Old WR pool system
-        uint32 const poolId   = fields[19].GetUInt32();
-        data.patch_min        = fields[20].GetInt8();
-        data.patch_max        = fields[21].GetInt8();
+        uint32 mapId          = fields[2].GetUInt16();
+        data.spawnMask        = fields[3].GetUInt8();
+        data.displayid        = fields[4].GetUInt32();
+        data.equipmentId      = fields[5].GetInt8();
+
+        if (data.equipmentId != 0 && !GetEquipmentInfo(data.id, data.equipmentId))
+        {
+            TC_LOG_ERROR("sql.sql", "Table `creature` has creature (SpawnId: %u) with equipment_id %u not found in table `creature_equip_template`, reverting to no equipment.", spawnId, data.equipmentId);
+            data.equipmentId = 0;
+        }
+
+        data.spawnPoint.WorldRelocate(mapId, fields[6].GetFloat(), fields[7].GetFloat(), fields[8].GetFloat(), fields[9].GetFloat());
+        data.spawntimesecs    = fields[10].GetUInt32();
+        data.spawntimesecs_max= fields[11].GetUInt32();
+        data.spawndist        = fields[12].GetFloat();
+        data.currentwaypoint  = fields[13].GetUInt32();
+        data.curhealth        = fields[14].GetUInt32();
+        data.curmana          = fields[15].GetUInt32();
+        data.movementType     = fields[16].GetUInt8();
+        data.unit_flags       = fields[17].GetUInt32();
+        data.scriptId         = GetScriptId(fields[18].GetString());
+        int32 const gameEvent = fields[19].GetInt32();
+        data.poolId           = fields[20].GetUInt32(); //Old WR pool system
+        uint32 const poolId   = fields[21].GetUInt32();
+        data.patch_min        = fields[22].GetInt8();
+        data.patch_max        = fields[23].GetInt8();
 
         if ((data.patch_min > data.patch_max) || (data.patch_max > WOW_PATCH_MAX))
         {
@@ -1913,7 +1884,7 @@ ObjectGuid::LowType ObjectMgr::AddCreatureData(uint32 entry, uint32 mapId, float
     ObjectGuid::LowType spawnId = GenerateCreatureSpawnId();
 
     CreatureData& data = NewOrExistCreatureData(spawnId);
-    data.ids.emplace_back(entry);
+    data.id = entry;
     data.displayid = 0;
     data.spawnPoint.WorldRelocate(mapId, x, y, z, o);
     data.spawntimesecs = spawntimedelay;
@@ -6612,7 +6583,7 @@ void ObjectMgr::LoadPointsOfInterest()
     uint32 count = 0;
 
     //                                                0       1          2        3     4        5        6
-    QueryResult result = WorldDatabase.PQuery("SELECT ID, PositionX, PositionY, Icon, Flags, Importance, Name, MAX(patch) FROM points_of_interest WHERE patch <= %u GROUP BY ID", sWorld->GetWowPatch());
+    QueryResult result = WorldDatabase.PQuery("SELECT ID, ANY_VALUE(PositionX), ANY_VALUE(PositionY), ANY_VALUE(Icon), ANY_VALUE(Flags), ANY_VALUE(Importance), ANY_VALUE(Name), MAX(patch) FROM points_of_interest WHERE patch <= %u GROUP BY ID", sWorld->GetWowPatch());
 
     if (!result)
     {

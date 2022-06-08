@@ -1429,6 +1429,9 @@ bool Map::CreatureCellRelocation(Creature *c, Cell new_cell)
         return true;
     }
 
+    if (c->GetCharmerOrOwnerGUID().IsPlayer())
+        EnsureGridLoaded(new_cell);
+
     // in diff. loaded grid normal creature
     if(IsGridLoaded(GridCoord(new_cell.GridX(), new_cell.GridY())))
     {
@@ -3723,7 +3726,7 @@ void Map::LoadRespawnTimes()
             uint64 respawnTime = fields[1].GetUInt64();
 
             if (CreatureData const* cdata = sObjectMgr->GetCreatureData(loguid))
-                SaveRespawnTime(SPAWN_TYPE_CREATURE, loguid, cdata->ChooseSpawnEntry(), time_t(respawnTime), GetZoneId(cdata->spawnPoint), Trinity::ComputeGridCoord(cdata->spawnPoint.GetPositionX(), cdata->spawnPoint.GetPositionY()).GetId(), false);
+                SaveRespawnTime(SPAWN_TYPE_CREATURE, loguid, cdata->id, time_t(respawnTime), GetZoneId(cdata->spawnPoint), Trinity::ComputeGridCoord(cdata->spawnPoint.GetPositionX(), cdata->spawnPoint.GetPositionY()).GetId(), false);
 
         } while (result->NextRow());
     }

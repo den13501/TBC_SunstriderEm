@@ -273,7 +273,7 @@ void InstanceSaveManager::LoadInstances()
 
 void InstanceSaveManager::LoadResetTimes()
 {
-	return;
+
     time_t now = WorldGameTime::GetGameTime();
     time_t today = (now / DAY) * DAY;
 
@@ -388,8 +388,8 @@ void InstanceSaveManager::LoadResetTimes()
         if (!t)
         {
             // initialize the reset time
-            //t = today + period + diff;
-            //CharacterDatabase.DirectPExecute("INSERT INTO instance_reset (mapid, difficulty, resettime) VALUES ('%u', '%u', '%u')", mapid, difficulty, (uint32)t);
+            t = today + period + diff;
+            CharacterDatabase.DirectPExecute("INSERT INTO instance_reset (mapid, difficulty, resettime) VALUES ('%u', '%u', '%u')", mapid, difficulty, (uint32)t);
         }
 
         if (t < now)
@@ -533,7 +533,7 @@ void InstanceSaveManager::_ResetSave(InstanceSaveHashMap::iterator &itr)
             if (bind->perm /*&& bind->extendState*/) // permanent and not already expired
             {
                 // actual promotion in DB already happened in caller
-                //bind->extendState = bind->extendState == EXTEND_STATE_EXTENDED ? EXTEND_STATE_NORMAL : EXTEND_STATE_EXPIRED;
+               // bind->extendState = bind->extendState == EXTEND_STATE_EXTENDED ? EXTEND_STATE_NORMAL : EXTEND_STATE_EXPIRED;
                 shouldDelete = false;
                 continue;
             }

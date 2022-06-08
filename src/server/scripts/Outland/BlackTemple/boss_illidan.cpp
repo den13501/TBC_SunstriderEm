@@ -799,7 +799,7 @@ class npc_akama_illidan : public CreatureScript
                 summons.DespawnAll();
             }
 
-            void sGossipSelect(Player* player, uint32 /*sender*/, uint32 action)
+            bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
             { 
                 CloseGossipMenuFor(player);
                 me->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
@@ -826,6 +826,7 @@ class npc_akama_illidan : public CreatureScript
                     events.ScheduleEvent(EVENT_AKAMA_SCENE_28, 49200);
                     events.ScheduleEvent(EVENT_AKAMA_SCENE_29, 52000);
                 }
+                return false;
             }
 
             void JustSummoned(Creature* summon)
